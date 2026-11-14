@@ -7,4 +7,9 @@ async function bootstrap() {
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
-await bootstrap();
+// Not awaited: on Vercel, listen() is taken over by the platform and its promise may never
+// settle, and an awaited top-level promise would stop the module from finishing loading.
+bootstrap().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
