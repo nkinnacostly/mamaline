@@ -1,10 +1,10 @@
 import { BadRequestException, Body, Controller, Get, Headers, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
 import type { HealthWorker } from '../generated/prisma/client.js';
 import { AuthService } from './auth.service.js';
 import { bearerToken, CurrentWorker, HealthWorkerGuard } from './health-worker.guard.js';
+import { SignInRateLimitGuard } from './rate-limit.guard.js';
 
 const signInBody = z.object({ phone: z.string().min(5).max(20), pin: z.string().regex(/^\d{4}$/) });
 
@@ -15,8 +15,7 @@ export class AuthController {
   /** Phone number + PIN. Limited to 10 attempts a minute per address, on top of the PIN lockout. */
   @Post('sign-in')
   @HttpCode(200)
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(SignInRateLimitGuard)
   signIn(@Body() body: unknown, @Headers('user-agent') userAgent?: string) {
     const parsed = signInBody.safeParse(body);
     if (!parsed.success) throw new BadRequestException('Enter your phone number and 4-digit PIN.');
