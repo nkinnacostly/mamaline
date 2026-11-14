@@ -6,14 +6,15 @@ The production backend for MamaLine: NestJS 12, Prisma 7 and Postgres on Neon. I
 
 | Ported and tested | Still to build |
 |---|---|
-| USSD menus for new callers, mothers and health workers, in 5 languages (same screens as the prototype) | Health worker dashboard API with sign-in, and the dashboard itself |
-| Health worker PIN sign-in, 15-minute lockout, PIN change | Africa's Talking delivery reports (mark SMS delivered or failed) |
-| Registration by the mother or a health worker; consent by USSD or SMS reply; NO and STOP delete her details | Rate limiting on the webhooks, and checking requests really come from Africa's Talking |
-| Danger signs: emergency SMS to the mother, alert to her health worker (or the duty phone) | Field encryption for phone numbers; scheduled deletion of old SMS logs |
-| Free-text questions: safety rules first, then Claude, then validated answers; follow-ups when a call is needed | A job queue for SMS sending and retries (at the moment SMS go out right after the USSD reply) |
-| Antenatal and vaccine reminders, missed-visit follow-ups, tips; sent exactly once even across instances | Recording a birth (moves a mother to vaccine reminders) |
-| Audit log for registration, consent, deletion and PIN changes | |
-| 38 unit tests, 8 end-to-end tests over HTTP against Postgres; CI against Postgres 17 | |
+| USSD menus for new callers, mothers and health workers, in 5 languages (same screens as the prototype) | Africa's Talking delivery reports (mark SMS delivered or failed) |
+| Health worker PIN sign-in, 15-minute lockout, PIN change | Rate limiting on the webhooks, and checking requests really come from Africa's Talking |
+| Registration by the mother or a health worker; consent by USSD or SMS reply; NO and STOP delete her details | Field encryption for phone numbers; scheduled deletion of old SMS logs |
+| Danger signs: emergency SMS to the mother, alert to her health worker (or the duty phone) | A job queue for SMS sending and retries (at the moment SMS go out right after the USSD reply) |
+| Free-text questions: safety rules first, then Claude, then validated answers; follow-ups when a call is needed | Supervisor accounts (set PINs, see every health worker in an LGA) |
+| Antenatal and vaccine reminders, missed-visit follow-ups, tips; sent exactly once even across instances | |
+| Health worker dashboard API: phone + PIN sign-in with 7-day sessions, day, week and month views, register a mother, record a birth, mark visits, alerts and follow-ups done | |
+| Audit log for registration, consent, deletion, PIN changes and visits marked done | |
+| 40 unit tests, 13 end-to-end tests over HTTP against Postgres; CI against Postgres 17 | |
 
 ## Endpoints
 
@@ -22,6 +23,16 @@ The production backend for MamaLine: NestJS 12, Prisma 7 and Postgres on Neon. I
 | `POST /ussd` | Africa's Talking USSD callback (form-encoded). Replies `CON ...` or `END ...` |
 | `POST /sms/inbound` | Africa's Talking inbound SMS callback: YES, NO and STOP replies |
 | `GET /health` | The host and uptime monitors |
+| `POST /auth/sign-in` | The dashboard: `{ phone, pin }` returns a session token (10 tries a minute per IP; 3 wrong PINs pause the number for 15 minutes) |
+| `POST /auth/sign-out`, `GET /auth/me` | The dashboard, with `Authorization: Bearer <token>` |
+| `GET /dashboard/day?date=`, `/week?date=`, `/month?date=` | Visits and vaccines due (and, for today, open alerts and follow-ups). Dates are `YYYY-MM-DD` in Nigerian time |
+| `GET /dashboard/mothers`, `GET /dashboard/follow-ups` | Her mothers; everything still open |
+| `POST /dashboard/mothers` | Register a mother: `{ phone, language, track, amount, location }`. She is saved as awaiting consent and gets the consent SMS |
+| `POST /dashboard/mothers/:id/birth` | Record a birth: moves her to baby vaccine reminders |
+| `POST /dashboard/mothers/:id/visits/:itemKey/done` | She came for a visit or vaccine (`anc-30`, `vx-6w`): no more reminders for it |
+| `POST /dashboard/alerts/:id/contacted`, `POST /dashboard/follow-ups/:id/done` | Close an alert or follow-up |
+
+Every dashboard route only ever reads or changes the signed-in health worker's own mothers, alerts and follow-ups.
 
 ## How it is organised
 
@@ -33,6 +44,8 @@ The production backend for MamaLine: NestJS 12, Prisma 7 and Postgres on Neon. I
 | `src/sms/` | Sending SMS through Africa's Talking; every message is logged |
 | `src/ai/` | Claude for grading questions and translating SMS; everything works without it |
 | `src/core/` | Clock, facility and health worker directory, audit log |
+| `src/auth/` | PIN hashing and lockout, dashboard sessions (only a hash of each token is stored), the bearer-token guard |
+| `src/dashboard/` | What the health worker dashboard shows and does, all scoped to the signed-in health worker |
 
 The USSD reply is sent first and the follow-up work runs straight after, because networks close a USSD session within seconds.
 
@@ -63,6 +76,12 @@ npm run start:dev
 ```
 
 Check it at http://localhost:3000/health.
+
+To see the dashboard with something on it, add sample mothers for Amina (sign in as 0800 000 0101, PIN 2468). It refuses to run when `NODE_ENV=production`, and sample numbers never get real SMS:
+
+```bash
+npm run db:demo
+```
 
 ## Setting up Neon
 

@@ -8,7 +8,8 @@ Live website: https://mamaline-web.vercel.app
 
 | Folder | What it is | Stack |
 |---|---|---|
-| [`api/`](api/) | The production backend: USSD and SMS service, consent, reminders and alerts (ported from `service/`) | NestJS 12, Prisma 7, Postgres on Neon |
+| [`api/`](api/) | The production backend: USSD and SMS service, consent, reminders, alerts and the dashboard API | NestJS 12, Prisma 7, Postgres on Neon |
+| [`dashboard/`](dashboard/) | The health worker app: today's visits, alerts and follow-ups, her mothers, a calendar, and registering a mother | Next.js 16, Tailwind CSS 4 |
 | [`service/`](service/) | The working prototype: USSD and SMS service, health worker dashboard and phone simulator | Node.js 22, no framework; Africa's Talking; Claude for AI answers |
 | [`web/`](web/) | The public website | Next.js 16, Tailwind CSS 4, Vercel; Resend for the partner form |
 
@@ -20,6 +21,12 @@ API (needs a Postgres URL in `api/.env`, see [api/README.md](api/README.md)):
 
 ```bash
 cd api && npm install && npx prisma migrate deploy && npx prisma db seed && npm run start:dev
+```
+
+Health worker dashboard (http://localhost:3003, with the API on port 3010; sign in as 0800 000 0101, PIN 2468 after `npm run db:demo` in `api/`):
+
+```bash
+cd dashboard && npm install && MAMALINE_API_URL=http://localhost:3010 npm run dev -- -p 3003
 ```
 
 Prototype service (http://localhost:3001 for the simulator, `/admin` for the dashboard):
@@ -40,7 +47,7 @@ MamaLine is a working prototype. It is not yet safe to use with real mothers. Be
 
 - **Clinical sign-off:** a midwife, nurse or doctor must approve every health message, danger-sign list and triage rule (`service/knowledge/`, `service/src/i18n.js`, `service/src/triage.js`).
 - **Professional translation:** the Hausa, Yoruba and Igbo text is a draft. Medical and consent wording is English and Pidgin only until translated.
-- **Production backend:** the USSD, SMS, consent and reminder features now run on the NestJS + Neon API in `api/`. Still to build there: the health worker dashboard and sign-in, delivery reports, webhook verification and field encryption.
+- **Production backend:** the USSD, SMS, consent and reminder features now run on the NestJS + Neon API in `api/`. The health worker dashboard runs on it too (`dashboard/`). Still to build: delivery reports, webhook verification, field encryption and supervisor accounts.
 - **Telecoms:** get a live USSD code and SMS sender ID through Africa's Talking or another aggregator.
 - **Data protection:** consent and deletion are built in. Still to do under the Nigeria Data Protection Act 2023: a legal review of the consent wording, a data protection impact assessment and a retention policy.
 
