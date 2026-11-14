@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "seed": "node scripts/seed.js",
-    "test": "node --test test/",
+    "test": "node --test \"test/*.test.js\"",
     "set-pin": "node scripts/set-pin.js"
   },
   "dependencies": {
