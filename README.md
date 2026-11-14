@@ -8,7 +8,7 @@ Live website: https://mamaline-web.vercel.app
 
 | Folder | What it is | Stack |
 |---|---|---|
-| [`api/`](api/) | The production backend, being built to replace `service/` | NestJS 12, Prisma 7, Postgres on Neon |
+| [`api/`](api/) | The production backend: USSD and SMS service, consent, reminders and alerts (ported from `service/`) | NestJS 12, Prisma 7, Postgres on Neon |
 | [`service/`](service/) | The working prototype: USSD and SMS service, health worker dashboard and phone simulator | Node.js 22, no framework; Africa's Talking; Claude for AI answers |
 | [`web/`](web/) | The public website | Next.js 16, Tailwind CSS 4, Vercel; Resend for the partner form |
 
@@ -40,7 +40,7 @@ MamaLine is a working prototype. It is not yet safe to use with real mothers. Be
 
 - **Clinical sign-off:** a midwife, nurse or doctor must approve every health message, danger-sign list and triage rule (`service/knowledge/`, `service/src/i18n.js`, `service/src/triage.js`).
 - **Professional translation:** the Hausa, Yoruba and Igbo text is a draft. Medical and consent wording is English and Pidgin only until translated.
-- **Production backend:** the prototype stores data in a JSON file. The NestJS + Neon API in `api/` has the database, data model and migrations in place; the USSD, SMS and reminder features still have to be ported to it.
+- **Production backend:** the USSD, SMS, consent and reminder features now run on the NestJS + Neon API in `api/`. Still to build there: the health worker dashboard and sign-in, delivery reports, webhook verification and field encryption.
 - **Telecoms:** get a live USSD code and SMS sender ID through Africa's Talking or another aggregator.
 - **Data protection:** consent and deletion are built in. Still to do under the Nigeria Data Protection Act 2023: a legal review of the consent wording, a data protection impact assessment and a retention policy.
 

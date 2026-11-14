@@ -1,18 +1,40 @@
 # MamaLine API
 
-The production backend for MamaLine: NestJS 12, Prisma 7 and Postgres on Neon. It will replace the prototype in [`../service`](../service) one module at a time.
+The production backend for MamaLine: NestJS 12, Prisma 7 and Postgres on Neon. It replaces the prototype in [`../service`](../service); the USSD and SMS service is now ported.
 
 ## Status
 
-| Done | Next |
+| Ported and tested | Still to build |
 |---|---|
-| NestJS app with config validation (Zod) and graceful shutdown | Port the USSD menus, triage rules, schedules and text from `service/src` |
-| Prisma 7 with the Postgres driver adapter, Neon-ready (pooled + direct URLs) | Africa's Talking USSD and SMS webhooks |
-| Data model and first migration: mothers, consent, health workers and PINs, facilities, care records, reminders, alerts, follow-ups, questions, SMS log, USSD sessions, audit log | Reminder scheduler (one instance only) |
-| `GET /health` with a database check | Health worker dashboard API with sign-in |
-| PIN hashing shared with the prototype | Field encryption for phone numbers; data retention jobs |
-| Seed for facilities and health workers | |
-| Unit and end-to-end tests; CI against Postgres 17 | |
+| USSD menus for new callers, mothers and health workers, in 5 languages (same screens as the prototype) | Health worker dashboard API with sign-in, and the dashboard itself |
+| Health worker PIN sign-in, 15-minute lockout, PIN change | Africa's Talking delivery reports (mark SMS delivered or failed) |
+| Registration by the mother or a health worker; consent by USSD or SMS reply; NO and STOP delete her details | Rate limiting on the webhooks, and checking requests really come from Africa's Talking |
+| Danger signs: emergency SMS to the mother, alert to her health worker (or the duty phone) | Field encryption for phone numbers; scheduled deletion of old SMS logs |
+| Free-text questions: safety rules first, then Claude, then validated answers; follow-ups when a call is needed | A job queue for SMS sending and retries (at the moment SMS go out right after the USSD reply) |
+| Antenatal and vaccine reminders, missed-visit follow-ups, tips; sent exactly once even across instances | Recording a birth (moves a mother to vaccine reminders) |
+| Audit log for registration, consent, deletion and PIN changes | |
+| 38 unit tests, 8 end-to-end tests over HTTP against Postgres; CI against Postgres 17 | |
+
+## Endpoints
+
+| Method and path | Who calls it |
+|---|---|
+| `POST /ussd` | Africa's Talking USSD callback (form-encoded). Replies `CON ...` or `END ...` |
+| `POST /sms/inbound` | Africa's Talking inbound SMS callback: YES, NO and STOP replies |
+| `GET /health` | The host and uptime monitors |
+
+## How it is organised
+
+| Folder | What it holds |
+|---|---|
+| `src/content/` | Everything a mother reads (screens, SMS, tips), the schedules and the safety rules. Pure functions, no database. Needs clinical sign-off before a pilot |
+| `src/ussd/` | The menu engine (`menu.ts`, testable without a database), the service that loads the caller's record and session, and the controller |
+| `src/care/` | What happens after a screen: registration, consent, emergencies, answers (`care.service.ts`), and the reminder scheduler (`reminders.service.ts`) |
+| `src/sms/` | Sending SMS through Africa's Talking; every message is logged |
+| `src/ai/` | Claude for grading questions and translating SMS; everything works without it |
+| `src/core/` | Clock, facility and health worker directory, audit log |
+
+The USSD reply is sent first and the follow-up work runs straight after, because networks close a USSD session within seconds.
 
 ## Run it locally
 

@@ -1,14 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CareModule } from './care/care.module.js';
 import { envSchema } from './config/env.js';
+import { CoreModule } from './core/core.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { UssdModule } from './ussd/ussd.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validationSchema: envSchema }),
+    ScheduleModule.forRoot(),
     PrismaModule,
+    CoreModule,
     HealthModule,
+    CareModule,
+    UssdModule,
   ],
 })
 export class AppModule {}
