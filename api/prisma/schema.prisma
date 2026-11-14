@@ -1,0 +1,340 @@
+// MamaLine data model.
+// Personal data: mothers' phone numbers, pregnancy and baby dates, village, and their messages.
+// Treat every table here as sensitive health data under the Nigeria Data Protection Act 2023.
+// Tables and columns use snake_case in Postgres (@@map / @map) so SQL reports read naturally.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum Language {
+  en
+  pcm
+  ha
+  yo
+  ig
+}
+
+enum CareTrack {
+  PREGNANCY
+  BABY
+}
+
+enum ConsentStatus {
+  PENDING // registered by a health worker, waiting for her YES
+  GIVEN
+}
+
+enum Channel {
+  USSD
+  SMS
+  DASHBOARD
+}
+
+enum Registrant {
+  SELF
+  HEALTH_WORKER
+}
+
+enum PatientGroup {
+  PREGNANT
+  AFTER_BIRTH
+  BABY
+}
+
+enum TriageLevel {
+  ROUTINE
+  SOON
+  EMERGENCY
+}
+
+enum TriageSource {
+  MENU // she picked a danger sign from the list
+  RULES // the fixed safety rules found one in free text
+  AI // only the AI flagged it
+}
+
+enum AlertStatus {
+  OPEN
+  CONTACTED
+}
+
+enum FollowUpStatus {
+  OPEN
+  DONE
+}
+
+enum MessageKind {
+  CONSENT
+  WELCOME
+  REMINDER
+  MISSED
+  TIP
+  ANSWER
+  URGENT
+  CLINIC
+  HEALTH_WORKER
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  SIMULATED
+}
+
+enum ActorType {
+  MOTHER
+  HEALTH_WORKER
+  ADMIN
+  SYSTEM
+}
+
+// ---------- Directory ----------
+
+/// A health facility. Load real ones from the Nigeria Health Facility Registry.
+model Facility {
+  id                String   @id // stable slug, e.g. "kura-phc"
+  name              String
+  lga               String
+  state             String
+  hfrCode           String?  @unique @map("hfr_code") /// Nigeria Health Facility Registry code
+  services          String
+  emergencyObstetric Boolean @default(false) @map("emergency_obstetric")
+  places            String[] /// lower-case village and LGA names this facility serves
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  mothers Mother[]
+  alerts  Alert[]
+
+  @@map("facilities")
+}
+
+/// A community health extension worker (CHEW).
+model HealthWorker {
+  id        String    @id @default(uuid())
+  name      String
+  phone     String    @unique /// E.164, e.g. +2348031234567
+  places    String[] /// lower-case village and LGA names she covers
+  active    Boolean   @default(true)
+  pinHash   String?   @map("pin_hash") /// scrypt hash; the PIN itself is never stored
+  pinSalt   String?   @map("pin_salt")
+  pinSetAt  DateTime? @map("pin_set_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  mothers     Mother[]
+  alerts      Alert[]
+  followUps   FollowUp[]
+  pinFailures PinFailure[]
+
+  @@map("health_workers")
+}
+
+/// Wrong PIN attempts, for the 15-minute lockout after 3 failures.
+model PinFailure {
+  id             String       @id @default(uuid())
+  healthWorkerId String       @map("health_worker_id")
+  healthWorker   HealthWorker @relation(fields: [healthWorkerId], references: [id], onDelete: Cascade)
+  at             DateTime     @default(now())
+
+  @@index([healthWorkerId, at])
+  @@map("pin_failures")
+}
+
+// ---------- Mothers ----------
+
+model Mother {
+  id                 String        @id @default(uuid())
+  phone              String        @unique /// E.164
+  language           Language
+  track              CareTrack
+  expectedDueDate    DateTime?     @map("expected_due_date") /// set while pregnant
+  babyBirthDate      DateTime?     @map("baby_birth_date") /// set once the baby is born
+  location           String /// village or LGA as she or her health worker typed it
+  name               String? /// optional; not needed for the service
+  ancCardNumber      String?       @map("anc_card_number")
+  facilityId         String?       @map("facility_id")
+  facility           Facility?     @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  healthWorkerId     String?       @map("health_worker_id")
+  healthWorker       HealthWorker? @relation(fields: [healthWorkerId], references: [id], onDelete: SetNull)
+  registeredBy       Registrant    @map("registered_by")
+  registeredAt       DateTime      @default(now()) @map("registered_at")
+  trackStartedAt     DateTime      @default(now()) @map("track_started_at") /// reset when a birth is recorded; reminders due before this are not chased
+  consentStatus      ConsentStatus @map("consent_status")
+  consentRequestedAt DateTime?     @map("consent_requested_at")
+  consentGivenAt     DateTime?     @map("consent_given_at")
+  consentChannel     Channel?      @map("consent_channel")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  careRecords   CareRecord[]
+  sentReminders SentReminder[]
+  alerts        Alert[]
+  followUps     FollowUp[]
+  questions     Question[]
+
+  @@index([healthWorkerId])
+  @@index([consentStatus])
+  @@map("mothers")
+}
+
+/// A visit or vaccine she has confirmed ("I went for my visit") or a health worker recorded.
+model CareRecord {
+  id          String   @id @default(uuid())
+  motherId    String   @map("mother_id")
+  mother      Mother   @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  itemKey     String   @map("item_key") /// e.g. "anc-30", "vx-6w"
+  completedAt DateTime @default(now()) @map("completed_at")
+  channel     Channel
+
+  @@unique([motherId, itemKey])
+  @@map("care_records")
+}
+
+/// Which scheduled messages have gone out, so each is sent once (e.g. "anc-30:pre", "tip:preg-24").
+model SentReminder {
+  id       String   @id @default(uuid())
+  motherId String   @map("mother_id")
+  mother   Mother   @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  key      String
+  sentAt   DateTime @default(now()) @map("sent_at")
+
+  @@unique([motherId, key])
+  @@map("sent_reminders")
+}
+
+// ---------- Safety and follow-up ----------
+
+/// A reported danger sign. The mother has already been told to go now; the CHEW confirms contact.
+model Alert {
+  id             String        @id @default(uuid())
+  motherId       String?       @map("mother_id")
+  mother         Mother?       @relation(fields: [motherId], references: [id], onDelete: SetNull)
+  phone          String /// kept for unregistered callers; cleared if she asks to be deleted
+  group          PatientGroup
+  sign           String /// e.g. "bleeding"
+  signLabel      String        @map("sign_label")
+  source         TriageSource
+  location       String?
+  detail         String? /// e.g. "about 33 weeks pregnant"
+  facilityId     String?       @map("facility_id")
+  facility       Facility?     @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  healthWorkerId String?       @map("health_worker_id")
+  healthWorker   HealthWorker? @relation(fields: [healthWorkerId], references: [id], onDelete: SetNull)
+  status         AlertStatus   @default(OPEN)
+  contactedAt    DateTime?     @map("contacted_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@index([status, healthWorkerId])
+  @@map("alerts")
+}
+
+/// Work for a health worker: a missed visit, no consent after 3 days, a symptom to check, a question to answer.
+model FollowUp {
+  id             String         @id @default(uuid())
+  motherId       String?        @map("mother_id")
+  mother         Mother?        @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  phone          String
+  itemKey        String?        @map("item_key")
+  reason         String
+  healthWorkerId String?        @map("health_worker_id")
+  healthWorker   HealthWorker?  @relation(fields: [healthWorkerId], references: [id], onDelete: SetNull)
+  status         FollowUpStatus @default(OPEN)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  doneAt         DateTime?      @map("done_at")
+
+  @@index([status, healthWorkerId])
+  @@map("follow_ups")
+}
+
+/// A free-text question or "other problem", how it was triaged, and the reply sent.
+model Question {
+  id        String       @id @default(uuid())
+  motherId  String?      @map("mother_id")
+  mother    Mother?      @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  phone     String
+  language  Language
+  isProblem Boolean      @default(false) @map("is_problem") /// came from the danger-sign menu's "Other problem"
+  text      String
+  level     TriageLevel
+  ruleSigns String[]     @map("rule_signs")
+  usedAi    Boolean      @default(false) @map("used_ai")
+  answer    String?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("questions")
+}
+
+// ---------- Messaging ----------
+
+/// Every SMS sent. Set a retention period: this log holds phone numbers.
+model OutboundMessage {
+  id         String        @id @default(uuid())
+  to         String
+  body       String
+  kind       MessageKind
+  status     MessageStatus @default(QUEUED)
+  providerId String?       @map("provider_id") /// Africa's Talking message id
+  error      String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+  sentAt     DateTime?     @map("sent_at")
+
+  @@index([to, createdAt])
+  @@index([status])
+  @@map("outbound_messages")
+}
+
+/// Every SMS received (YES / NO / STOP replies), with how it was read.
+model InboundMessage {
+  id            String   @id @default(uuid())
+  from          String
+  text          String
+  interpretedAs String?  @map("interpreted_as") /// "yes", "no" or null
+  providerId    String?  @map("provider_id")
+  receivedAt    DateTime @default(now()) @map("received_at")
+
+  @@index([from, receivedAt])
+  @@map("inbound_messages")
+}
+
+/// USSD session state, so any server instance can answer the next screen.
+model UssdSession {
+  id            String   @id /// the gateway's sessionId
+  phone         String
+  askedLanguage Boolean  @map("asked_language")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([updatedAt])
+  @@map("ussd_sessions")
+}
+
+// ---------- Accountability ----------
+
+/// Who did what: consent given or withdrawn, deletions, registrations, PIN changes.
+/// Do not put message text or health details in `details`.
+model AuditEvent {
+  id          String    @id @default(uuid())
+  actorType   ActorType @map("actor_type")
+  actorId     String?   @map("actor_id")
+  action      String /// e.g. "consent.given", "mother.deleted", "pin.changed"
+  subjectType String?   @map("subject_type")
+  subjectId   String?   @map("subject_id")
+  details     Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([subjectType, subjectId])
+  @@index([createdAt])
+  @@map("audit_events")
+}

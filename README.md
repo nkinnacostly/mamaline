@@ -8,14 +8,21 @@ Live website: https://mamaline-web.vercel.app
 
 | Folder | What it is | Stack |
 |---|---|---|
-| [`service/`](service/) | The USSD and SMS service, health worker dashboard and phone simulator | Node.js 22, no framework; Africa's Talking; Claude for AI answers |
+| [`api/`](api/) | The production backend, being built to replace `service/` | NestJS 12, Prisma 7, Postgres on Neon |
+| [`service/`](service/) | The working prototype: USSD and SMS service, health worker dashboard and phone simulator | Node.js 22, no framework; Africa's Talking; Claude for AI answers |
 | [`web/`](web/) | The public website | Next.js 16, Tailwind CSS 4, Vercel; Resend for the partner form |
 
 Each folder has its own README with setup, configuration and details.
 
 ## Quick start
 
-Service (http://localhost:3001 for the simulator, `/admin` for the dashboard):
+API (needs a Postgres URL in `api/.env`, see [api/README.md](api/README.md)):
+
+```bash
+cd api && npm install && npx prisma migrate deploy && npx prisma db seed && npm run start:dev
+```
+
+Prototype service (http://localhost:3001 for the simulator, `/admin` for the dashboard):
 
 ```bash
 cd service && npm install && npm run seed && npm start
@@ -33,7 +40,7 @@ MamaLine is a working prototype. It is not yet safe to use with real mothers. Be
 
 - **Clinical sign-off:** a midwife, nurse or doctor must approve every health message, danger-sign list and triage rule (`service/knowledge/`, `service/src/i18n.js`, `service/src/triage.js`).
 - **Professional translation:** the Hausa, Yoruba and Igbo text is a draft. Medical and consent wording is English and Pidgin only until translated.
-- **Production backend:** the service stores data in a JSON file. Move it to a managed database with encryption and backups.
+- **Production backend:** the prototype stores data in a JSON file. The NestJS + Neon API in `api/` has the database, data model and migrations in place; the USSD, SMS and reminder features still have to be ported to it.
 - **Telecoms:** get a live USSD code and SMS sender ID through Africa's Talking or another aggregator.
 - **Data protection:** consent and deletion are built in. Still to do under the Nigeria Data Protection Act 2023: a legal review of the consent wording, a data protection impact assessment and a retention policy.
 
@@ -46,5 +53,5 @@ MamaLine is a working prototype. It is not yet safe to use with real mothers. Be
 
 ## Development
 
-- CI runs on every push and pull request: service tests, and website type-check, lint and build (`.github/workflows/ci.yml`).
+- CI runs on every push and pull request (`.github/workflows/ci.yml`): API lint, build, unit tests, migrations and end-to-end tests against Postgres 17; prototype tests; and website type-check, lint and build.
 - Never commit `.env` files, `data/` or real phone numbers. Sample data uses the `+2348000000xxx` range, which the SMS code never sends to.
