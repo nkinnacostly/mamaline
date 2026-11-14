@@ -62,7 +62,7 @@
     "vitest": "^4.1.2"
   },
   "engines": {
-    "node": ">=22.9"
+    "node": "22.x"
   },
   "allowScripts": {
     "@prisma/engines@7.10.1": true,
