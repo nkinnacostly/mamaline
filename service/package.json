@@ -1,0 +1,19 @@
+{
+  "name": "mamaline",
+  "version": "0.1.0",
+  "description": "Pregnancy and child-health companion over USSD and SMS, linked to community health workers.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "seed": "node scripts/seed.js",
+    "test": "node --test test/",
+    "set-pin": "node scripts/set-pin.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0"
+  }
+}

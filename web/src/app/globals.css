@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* MamaLine palette: deep leaf green on warm cream, after the reference layout. */
+@theme {
+  --color-leaf: #5c7a30;
+  --color-leaf-deep: #3f561f;
+  --color-leaf-soft: #e6edd8;
+  --color-cream: #fbf6ee;
+  --color-sand: #f2e9db;
+  --color-ink: #2b2620;
+  --color-muted: #6c665c;
+  --color-clay: #b4936f;
+  --color-line: #e6dccd;
+
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-sans: var(--font-poppins), "Poppins", system-ui, sans-serif;
+
+  --radius-arch: 999px 999px 32px 32px;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-leaf);
+  outline-offset: 3px;
+}
+
+@layer components {
+  /* Small spaced eyebrow above each heading, with a heart, as in the reference. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[0.72rem] font-medium tracking-[0.32em] uppercase text-clay;
+  }
+  .section-title {
+    @apply font-display text-4xl leading-[1.05] font-semibold text-balance text-ink sm:text-5xl;
+  }
+}

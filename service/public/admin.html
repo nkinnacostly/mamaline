@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MamaLine Health Worker Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><h1>MamaLine</h1><span>Health worker dashboard</span></div>
+    <nav class="nav"><a href="/">Phone simulator</a><a href="/admin" aria-current="page">Health worker dashboard</a></nav>
+  </div>
+
+  <div class="clockbar">
+    <span>Demo date <b id="demoDate"></b></span>
+    <button type="button" class="btn" data-days="1">+1 day</button>
+    <button type="button" class="btn" data-days="7">+1 week</button>
+    <button type="button" class="btn" data-days="0">Back to today</button>
+    <span class="muted" style="font-size: 0.85rem">Moves time forward to show reminders, missed visits and follow-ups.</span>
+    <span style="flex: 1"></span>
+    <div class="badges" id="modes"></div>
+    <button type="button" class="btn danger" id="resetBtn">Clear all data</button>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="panel" aria-labelledby="al-h">
+    <div>
+      <h2 id="al-h" style="font-size: 1.25rem">Urgent danger-sign alerts</h2>
+      <p class="muted" style="margin: 4px 0 0">The mother has already been told to go to a facility now. Call her to check she is on her way.</p>
+    </div>
+    <div class="alerts" id="alerts"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="fu-h">
+    <div>
+      <h2 id="fu-h" style="font-size: 1.15rem">Follow-up list</h2>
+      <p class="muted" style="margin: 4px 0 0">Missed visits and vaccines, symptoms to check, and questions that need a call.</p>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Since</th><th>Mother</th><th>Reason</th><th>CHEW</th><th></th></tr></thead><tbody id="followups"></tbody></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="m-h">
+    <h2 id="m-h" style="font-size: 1.15rem">Registered mothers</h2>
+    <div class="table-wrap"><table><thead><tr><th>Phone</th><th>Status</th><th>Next visit or vaccine</th><th>Clinic</th><th>Lang</th><th></th></tr></thead><tbody id="mothers"></tbody></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="q-h">
+    <h2 id="q-h" style="font-size: 1.15rem">Messages from mothers</h2>
+    <div class="table-wrap"><table><thead><tr><th>When</th><th>Message</th><th>Urgency</th><th>Reply sent</th><th>Checked by</th></tr></thead><tbody id="questions"></tbody></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="sms-h">
+    <h2 id="sms-h" style="font-size: 1.15rem">SMS log</h2>
+    <div class="table-wrap"><table><thead><tr><th>When</th><th>To</th><th>Type</th><th>Message</th></tr></thead><tbody id="outbox"></tbody></table></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const when = (iso) => new Date(iso).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const sample = (r) => (r.sample ? ` <span class="badge sample">sample</span>` : "");
+const LANG = { en: "EN", pcm: "PCM", ha: "HA", yo: "YO", ig: "IG" };
+const LEVEL = { emergency: '<span class="pill urgent">emergency</span>', soon: '<span class="pill soon">see within 1 day</span>', routine: '<span class="pill ok">routine</span>' };
+const rows = (list, render, cols) => (list.length ? list.map(render).join("") : `<tr><td colspan="${cols}" class="muted">Nothing here.</td></tr>`);
+let workers = {};
+
+async function post(url) { await fetch(url, { method: "POST" }); load(); }
+
+async function load() {
+  let s;
+  try { s = await (await fetch("/api/state")).json(); } catch { return; }
+  workers = Object.fromEntries(s.healthWorkers.map((w) => [w.id, w.name]));
+  $("demoDate").textContent = s.demoDate + (s.clockOffsetDays ? ` (+${s.clockOffsetDays} days)` : "");
+  $("modes").innerHTML = `<span class="badge${s.mode.ai ? " on" : ""}">AI: ${s.mode.ai ? "Claude + rules" : "rules only"}</span><span class="badge${s.mode.sms === "africastalking" ? " on" : ""}">SMS: ${s.mode.sms === "africastalking" ? "Africa's Talking" : "simulated"}</span><span class="badge">USSD ${esc(s.mode.ussdCode)}</span>`;
+  const c = s.counts;
+  $("tiles").innerHTML = [[c.openAlerts, "open urgent alerts"], [c.openFollowups, "follow-ups to do"], [c.pregnant, "pregnant women"], [c.babies, "babies under 1"], [c.awaitingConsent, "awaiting consent"], [c.sms, "SMS sent"]]
+    .map(([n, l]) => `<div class="tile"><b>${n}</b><span>${l}</span></div>`).join("");
+
+  const alerts = s.alerts.slice().sort((a, b) => (a.status === "open" ? 0 : 1) - (b.status === "open" ? 0 : 1)).slice(0, 9);
+  $("alerts").innerHTML = alerts.length ? alerts.map((a) => `
+    <article class="alert-card${a.status === "open" ? "" : " closed"}">
+      <span class="eyebrow">${esc(a.location)} &middot; ${when(a.at)}${sample(a)}</span>
+      <h3>${esc(a.signEnglish)}</h3>
+      <span class="meta">${esc(a.phone)} &middot; ${esc(a.detail)}</span>
+      <span class="meta">${a.healthWorkerId ? "Alert sent to " + esc(workers[a.healthWorkerId]) : "No health worker for this area"}${a.source === "menu" ? "" : " &middot; found in a free-text message"}</span>
+      ${a.status === "open" ? `<button type="button" class="btn primary" data-alert="${a.id}">Mark as contacted</button>` : `<span class="pill ok">contacted</span>`}
+    </article>`).join("") : `<p class="empty">No alerts. Danger signs reported on MamaLine appear here instantly.</p>`;
+
+  const fus = s.followups.filter((f) => f.status === "open");
+  $("followups").innerHTML = rows(fus, (f) => `<tr><td class="num">${when(f.at)}</td><td class="mono">${esc(f.phone)}${sample(f)}</td><td>${esc(f.reason)}</td><td>${esc(workers[f.healthWorkerId] ?? "-")}</td><td><button type="button" class="btn" data-followup="${f.id}">Done</button></td></tr>`, 5);
+
+  $("mothers").innerHTML = rows(s.mothers, (m) => `<tr>
+    <td class="mono">${esc(m.phone)}${sample(m)}</td>
+    <td>${m.status === "pregnant" ? `Pregnant, ${m.week} wks` : `Baby, ${m.week} wks`}${m.consentStatus === "pending" ? ' <span class="pill soon">awaiting consent</span>' : ""}</td>
+    <td>${m.consentStatus === "pending" ? '<span class="muted">No messages until she agrees</span>' : m.next ? `${esc(m.next.text)}, ${esc(m.next.date)}${m.next.overdue ? ' <span class="pill warn">overdue</span>' : ""}` : "-"}</td>
+    <td>${esc(m.facility ?? "-")}</td><td class="mono">${LANG[m.lang] ?? m.lang}</td>
+    <td>${m.status === "pregnant" && m.consentStatus !== "pending" ? `<button type="button" class="btn" data-birth="${m.id}">Record birth</button>` : ""}</td></tr>`, 6);
+
+  $("questions").innerHTML = rows(s.questions, (q) => `<tr><td class="num">${when(q.at)}</td><td>${esc(q.text)}${sample(q)}</td><td>${LEVEL[q.level] ?? esc(q.level)}</td><td>${esc(q.answer ?? "Sending...")}</td><td>${q.source === "ai+rules" ? "Claude + rules" : "Rules"}</td></tr>`, 5);
+  $("outbox").innerHTML = rows(s.outbox, (m) => `<tr><td class="num">${when(m.at)}</td><td class="mono">${esc(m.to)}</td><td><span class="pill${m.kind === "urgent" || m.kind === "health-worker" ? " warn" : ""}">${esc(m.kind)}</span></td><td>${esc(m.message)}</td></tr>`, 4);
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.alert) post(`/api/alerts/${b.dataset.alert}/contacted`);
+  if (b.dataset.followup) post(`/api/followups/${b.dataset.followup}/done`);
+  if (b.dataset.birth) post(`/api/mothers/${b.dataset.birth}/birth`);
+  if (b.dataset.days !== undefined) post(`/api/clock?days=${b.dataset.days}`);
+});
+
+let armed = false;
+$("resetBtn").addEventListener("click", () => {
+  if (!armed) { armed = true; $("resetBtn").textContent = "Click again to clear everything"; setTimeout(() => { armed = false; $("resetBtn").textContent = "Clear all data"; }, 4000); return; }
+  armed = false; $("resetBtn").textContent = "Clear all data"; post("/api/reset");
+});
+
+load(); setInterval(load, 3000);
+</script>
+</body>
+</html>

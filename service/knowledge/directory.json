@@ -1,0 +1,15 @@
+{
+  "_note": "SAMPLE DATA for the demo. Replace facilities with real entries from the Nigeria Health Facility Registry (hfr.health.gov.ng) and health workers with the state primary health care board's CHEW roster.",
+  "facilities": [
+    { "id": "kura-phc", "name": "Kura PHC (sample)", "lga": "Kura", "state": "Kano", "places": ["kura", "karfi", "dalili"], "services": "antenatal care, 24-hour delivery, vaccines" },
+    { "id": "bunkure-phc", "name": "Bunkure PHC (sample)", "lga": "Bunkure", "state": "Kano", "places": ["bunkure", "gafan"], "services": "antenatal care, delivery, vaccines" },
+    { "id": "dawakin-gh", "name": "Dawakin Kudu General Hospital (sample)", "lga": "Dawakin Kudu", "state": "Kano", "places": ["dawakin kudu", "dawaki"], "services": "emergency obstetric care, caesarean section, blood" },
+    { "id": "ikire-phc", "name": "Ikire PHC (sample)", "lga": "Irewole", "state": "Osun", "places": ["ikire", "irewole", "ikoyi"], "services": "antenatal care, delivery, vaccines" },
+    { "id": "nsukka-phc", "name": "Nsukka PHC (sample)", "lga": "Nsukka", "state": "Enugu", "places": ["nsukka", "obukpa", "ede-oballa"], "services": "antenatal care, delivery, vaccines" }
+  ],
+  "healthWorkers": [
+    { "id": "chew-amina", "name": "Amina (sample CHEW)", "phone": "+2348000000101", "places": ["kura", "karfi", "dalili", "bunkure", "gafan", "dawakin kudu", "dawaki"] },
+    { "id": "chew-bisi", "name": "Bisi (sample CHEW)", "phone": "+2348000000102", "places": ["ikire", "irewole", "ikoyi"] },
+    { "id": "chew-ngozi", "name": "Ngozi (sample CHEW)", "phone": "+2348000000103", "places": ["nsukka", "obukpa", "ede-oballa"] }
+  ]
+}

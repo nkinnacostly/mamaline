@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MamaLine Phone Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><h1>MamaLine</h1><span>Pregnancy and baby care on any phone</span></div>
+    <nav class="nav"><a href="/" aria-current="page">Phone simulator</a><a href="/admin">Health worker dashboard</a></nav>
+  </div>
+
+  <div class="sim">
+    <div class="phone" aria-label="Feature phone simulator">
+      <div class="speaker"></div>
+      <div class="lcd">
+        <div class="status"><span>MTN NG</span><span id="clock"></span></div>
+        <div class="screen" id="screen" aria-live="polite"></div>
+        <input id="entry" type="text" autocomplete="off" aria-label="Phone input">
+        <div class="hint" id="hint"></div>
+      </div>
+      <div class="softkeys">
+        <button type="button" class="call" id="callBtn">Call / Send</button>
+        <button type="button" class="hang" id="hangBtn">End</button>
+      </div>
+      <div class="keypad" id="keypad"></div>
+    </div>
+
+    <div class="side">
+      <section class="panel" aria-labelledby="who-h">
+        <h2 id="who-h" class="eyebrow">Who is holding the phone?</h2>
+        <div class="quick" id="quick"></div>
+        <div class="field-row">
+          <input id="phone" type="tel" value="+2348012345678" aria-label="Phone number">
+        </div>
+        <div class="field-row" style="justify-content: space-between">
+          <div class="badges" id="modes"></div>
+          <span class="muted" style="font-size: 0.85rem">Demo date <b id="demoDate" class="mono"></b> <button type="button" class="btn" id="skipWeek">Skip 1 week</button></span>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="inbox-h">
+        <div class="field-row" style="justify-content: space-between">
+          <h2 id="inbox-h" style="font-size: 1.15rem">This phone's SMS inbox</h2>
+          <span class="muted" style="font-size: 0.85rem">Replies and reminders arrive here</span>
+        </div>
+        <ul class="inbox" id="inbox"></ul>
+        <form id="replyForm" class="field-row" autocomplete="off">
+          <label class="sr-only" for="replyText">Reply by SMS</label>
+          <input id="replyText" type="text" placeholder="Reply by SMS, e.g. YES, NO or STOP" maxlength="160">
+          <button type="submit" class="btn primary">Send SMS</button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="hw-h">
+        <div class="field-row" style="justify-content: space-between">
+          <h2 id="hw-h" style="font-size: 1.15rem">Health workers' phones</h2>
+          <span class="muted" style="font-size: 0.85rem">Urgent alerts sent to the local CHEW</span>
+        </div>
+        <ul class="inbox" id="workerInbox"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="try-h">
+        <h2 id="try-h" style="font-size: 1.15rem">Try these</h2>
+        <ol class="tries">
+          <li>As a <b>new mother</b>: dial, pick a language, then <code>1</code> &rarr; <code>6</code> months &rarr; type <code>Kura</code> &rarr; <code>1</code> to agree</li>
+          <li>Danger sign: dial again, <code>1</code> &rarr; <code>1</code> (bleeding). Watch the health worker's phone.</li>
+          <li>Ask anything: <code>2</code> &rarr; type <code>can I take agbo</code> or <code>my feet are swollen</code></li>
+          <li>Click <b>Skip 1 week</b> to see visit reminders and missed-visit follow-ups</li>
+          <li>As <b>CHEW Amina</b>: PIN <code>2468</code> &rarr; <code>1</code> &rarr; a number like <code>08031234567</code> &rarr; <code>2</code> &rarr; <code>5</code> &rarr; <code>Bunkure</code>. Then type <code>+2348031234567</code> above and reply <code>YES</code> to the consent SMS.</li>
+        </ol>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const screenEl = $("screen"), entry = $("entry"), hint = $("hint");
+let state = "idle", text = "", sessionId = "", ussdCode = "*384*2#";
+let seen = new Set(), firstLoad = true, workers = [];
+
+const KEYS = [["1",""],["2","abc"],["3","def"],["4","ghi"],["5","jkl"],["6","mno"],["7","pqrs"],["8","tuv"],["9","wxyz"],["*",""],["0","+"],["#",""]];
+$("keypad").innerHTML = KEYS.map(([k, l]) => `<button type="button" data-key="${k}">${k}<small>${l || "&nbsp;"}</small></button>`).join("");
+$("keypad").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (state === "ended") return reset();
+  entry.value += b.dataset.key; entry.focus();
+});
+
+function tick() { $("clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+setInterval(tick, 30000); tick();
+
+function reset() {
+  state = "idle"; text = ""; sessionId = "";
+  screenEl.textContent = "MamaLine\n\nDial the code below and press Call. Free on all networks.";
+  entry.value = ussdCode; hint.textContent = "";
+}
+
+async function sendUssd() {
+  const value = entry.value.trim();
+  if (state === "idle") {
+    if (!value.startsWith("*") || !value.endsWith("#")) { hint.textContent = "Dial a USSD code such as " + ussdCode; return; }
+    sessionId = "sim-" + Date.now(); text = "";
+  } else if (state === "session") {
+    if (!value) { hint.textContent = "Type an option, then press Send."; return; }
+    text = text === "" ? value : text + "*" + value;
+  } else { return reset(); }
+  state = "waiting"; screenEl.textContent = "USSD code running..."; entry.value = ""; hint.textContent = "";
+  try {
+    const body = new URLSearchParams({ sessionId, serviceCode: ussdCode, phoneNumber: $("phone").value.trim(), networkCode: "62130", text });
+    const reply = await (await fetch("/ussd", { method: "POST", body })).text();
+    screenEl.textContent = reply.slice(4);
+    if (reply.startsWith("CON")) { state = "session"; hint.textContent = "Type with the keypad or keyboard, then Send."; entry.focus(); }
+    else { state = "ended"; hint.textContent = "Session ended. Press any key."; }
+  } catch { state = "ended"; screenEl.textContent = "Connection problem or invalid MMI code."; }
+}
+$("callBtn").addEventListener("click", sendUssd);
+$("hangBtn").addEventListener("click", reset);
+entry.addEventListener("keydown", (e) => { if (e.key === "Enter") sendUssd(); if (e.key === "Escape") reset(); });
+
+function usePhone(number) { $("phone").value = number; seen = new Set(); firstLoad = true; reset(); refresh(); }
+$("phone").addEventListener("change", () => usePhone($("phone").value.trim()));
+$("skipWeek").addEventListener("click", async () => { await fetch("/api/clock?days=7", { method: "POST" }); refresh(); });
+$("replyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("replyText").value.trim();
+  if (!text) return;
+  await fetch("/sms/inbound", { method: "POST", body: new URLSearchParams({ from: $("phone").value.trim(), to: "MamaLine", text }) });
+  $("replyText").value = "";
+  setTimeout(refresh, 400);
+});
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const time = (iso) => new Date(iso).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const bubble = (m, cls) => `<li class="sms ${cls}"><div class="meta"><span>${cls.includes("worker") ? "To " + esc(m.to) : "From MamaLine"} &middot; ${esc(m.kind)}</span><span>${time(m.at)}</span></div><p>${esc(m.message)}</p></li>`;
+
+async function refresh() {
+  try {
+    const phone = $("phone").value.trim();
+    const [inbox, s] = await Promise.all([
+      fetch("/api/inbox?phone=" + encodeURIComponent(phone)).then((r) => r.json()),
+      fetch("/api/state").then((r) => r.json()),
+    ]);
+    ussdCode = s.mode.ussdCode; if (state === "idle") entry.value = ussdCode;
+    $("demoDate").textContent = s.demoDate;
+    $("modes").innerHTML = `<span class="badge${s.mode.ai ? " on" : ""}">AI: ${s.mode.ai ? "Claude + safety rules" : "safety rules + validated messages"}</span><span class="badge${s.mode.sms === "africastalking" ? " on" : ""}">SMS: ${s.mode.sms === "africastalking" ? "Africa's Talking" : "simulated"}</span>`;
+    if (!workers.length) {
+      workers = s.healthWorkers;
+      const sample = s.mothers.find((m) => m.phone === "+2348000000201") ?? s.mothers.find((m) => m.sample && m.status === "pregnant");
+      $("quick").innerHTML = `<button type="button" class="btn primary" data-new="1">New mother</button>` +
+        (sample ? `<button type="button" class="btn" data-phone="${esc(sample.phone)}">Registered mother (${sample.week} wks)</button>` : "") +
+        workers.slice(0, 1).map((w) => `<button type="button" class="btn" data-phone="${esc(w.phone)}">${esc(w.name.replace(" (sample CHEW)", ""))} (health worker)</button>`).join("");
+    }
+    const list = inbox.slice().reverse();
+    $("inbox").innerHTML = list.length ? list.map((m) => bubble(m, !firstLoad && !seen.has(m.id) ? "new" : "")).join("") : `<li class="empty">No messages yet.</li>`;
+    list.forEach((m) => seen.add(m.id));
+    const workerPhones = new Set(workers.map((w) => w.phone));
+    const toWorkers = s.outbox.filter((m) => m.kind === "health-worker" && workerPhones.has(m.to) && m.to !== phone).slice(0, 4);
+    $("workerInbox").innerHTML = toWorkers.length ? toWorkers.map((m) => bubble(m, "worker")).join("") : `<li class="empty">No alerts yet. Report a danger sign to see one.</li>`;
+    firstLoad = false;
+  } catch {}
+}
+$("quick").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  usePhone(b.dataset.new ? "+23480" + String(Math.floor(10000000 + Math.random() * 89999999)) : b.dataset.phone);
+});
+
+reset(); refresh(); setInterval(refresh, 1500);
+</script>
+</body>
+</html>

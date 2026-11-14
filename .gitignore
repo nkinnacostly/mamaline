@@ -1,0 +1,20 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Local settings and secrets: never commit real keys
+.env
+.env.*
+!.env.example
+.vercel/
+
+# Runtime data (mothers' records, SMS log) stays on the server, never in git
+data/
+
+# OS and editor files
+.DS_Store
+*.log
+.vscode/
+.idea/
