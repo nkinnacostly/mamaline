@@ -93,6 +93,17 @@ npm run db:demo
 
 **Data protection:** a Neon database outside Nigeria means mothers' health data leaves the country. The Nigeria Data Protection Act 2023 allows this only on a lawful basis, so get legal advice before a pilot.
 
+## Deploying on Vercel
+
+The API runs on Vercel as a single function (project `mamaline-api`, root directory `api`, London region), with Postgres from Neon added through the Vercel Marketplace. Pushing to `main` deploys it when something in `api/` changed.
+
+- **Database:** the Neon integration sets `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct, used by the Prisma CLI). Run migrations from your machine before deploying a schema change: `vercel env pull` into a file outside the repo, load it, then `npx prisma migrate deploy`.
+- **Reminders:** a serverless function can't keep a timer running, so `REMINDERS_ENABLED=false` there and Vercel Cron calls `GET /internal/reminders` once a day at 08:00 Nigerian time (`vercel.json`), signed with `CRON_SECRET`. Without `CRON_SECRET` the route doesn't exist.
+- **After a USSD reply:** SMS, alerts and records run after the reply is sent; on Vercel `waitUntil` keeps the function alive until they finish (`src/core/background.ts`).
+- **SMS:** without `AT_USERNAME` and `AT_API_KEY`, every SMS is recorded as SIMULATED and nothing is sent.
+
+On a long-running server (Fly.io, Render, a VM) leave `REMINDERS_ENABLED` on and skip the cron.
+
 ## Working with the database
 
 | Task | Command |

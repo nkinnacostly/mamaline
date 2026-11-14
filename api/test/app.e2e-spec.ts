@@ -26,6 +26,11 @@ describe('MamaLine API (e2e)', () => {
     expect(res.body).toMatchObject({ status: 'ok', info: { database: { status: 'up' } } });
   });
 
+  it('keeps the reminders cron endpoint closed when no CRON_SECRET is set', async () => {
+    await request(app.getHttpServer()).get('/internal/reminders').expect(404);
+    await request(app.getHttpServer()).get('/internal/reminders').set('Authorization', 'Bearer guess').expect(404);
+  });
+
   it('can read the seeded directory', async () => {
     const amina = await prisma.healthWorker.findUnique({ where: { phone: '+2348000000101' } });
     expect(amina?.name).toMatch(/Amina/);

@@ -1,6 +1,7 @@
 import { Body, Controller, Header, HttpCode, Logger, Post } from '@nestjs/common';
 import { z } from 'zod';
 import { CareService } from '../care/care.service.js';
+import { inBackground } from '../core/background.js';
 import { UssdService } from './ussd.service.js';
 
 // Africa's Talking posts these as application/x-www-form-urlencoded.
@@ -31,7 +32,7 @@ export class UssdController {
     try {
       const result = await this.ussd.handle(parsed.data);
       // Answer the phone first; the follow-up work (SMS, alerts, records) happens after.
-      void this.care.run(result.actions);
+      inBackground(this.care.run(result.actions), (error) => this.logger.error(`USSD follow-up failed: ${(error as Error).message}`));
       return result.reply;
     } catch (error) {
       this.logger.error(`USSD request failed: ${(error as Error).message}`, (error as Error).stack);

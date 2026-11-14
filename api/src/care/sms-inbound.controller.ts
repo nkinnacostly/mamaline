@@ -1,7 +1,8 @@
-import { Body, Controller, Header, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Header, HttpCode, Logger, Post } from '@nestjs/common';
 import { z } from 'zod';
 import { parseReply } from '../content/text.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { inBackground } from '../core/background.js';
 import { CareService } from './care.service.js';
 
 // Africa's Talking inbound SMS callback fields (application/x-www-form-urlencoded).
@@ -16,6 +17,8 @@ const inboundBody = z.object({
 
 @Controller('sms')
 export class SmsInboundController {
+  private readonly logger = new Logger(SmsInboundController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly care: CareService,
@@ -35,7 +38,7 @@ export class SmsInboundController {
     const mother = answer ? await this.prisma.mother.findUnique({ where: { phone: from }, select: { consentStatus: true } }) : null;
     // A YES from someone who already agreed changes nothing; a NO or STOP always removes her.
     if (mother && answer && !(answer === 'yes' && mother.consentStatus === 'GIVEN')) {
-      void this.care.run([{ type: 'consent', phone: from, answer, channel: 'SMS' }]);
+      inBackground(this.care.run([{ type: 'consent', phone: from, answer, channel: 'SMS' }]), (error) => this.logger.error(`SMS reply handling failed: ${(error as Error).message}`));
     }
     return 'OK';
   }

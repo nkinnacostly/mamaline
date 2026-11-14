@@ -36,8 +36,11 @@ export const envSchema = z.object({
   // Receives urgent alerts from places with no health worker on the roster.
   DUTY_PHONE: z.string().optional(),
 
-  // Runs the reminder scheduler in this instance. Turn off in tests, or on extra instances.
+  // Runs the reminder scheduler in this instance. Turn off in tests, on extra instances,
+  // and on serverless hosts (Vercel), where a cron job calls /internal/reminders instead.
   REMINDERS_ENABLED: flag(true),
+  // Lets the host's cron call GET /internal/reminders with "Authorization: Bearer <secret>".
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
