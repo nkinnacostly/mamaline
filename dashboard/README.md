@@ -2,6 +2,8 @@
 
 The app health workers (CHEWs) use on their phones: today's danger-sign alerts, follow-ups and the visits and vaccines due, a week strip and a month calendar, the list of their mothers, and a + button to register a mother. It talks to the API in [`../api`](../api).
 
+Live at https://mamaline-dashboard.vercel.app (Vercel project `mamaline-dashboard`, London region, `MAMALINE_API_URL=https://mamaline-api.vercel.app`). It holds sample data only: sign in as 0800 000 0101 with PIN 2468.
+
 ## How it works
 
 - **Sign-in:** phone number and the same 4-digit PIN as the USSD menu. `POST /api/session` signs in through the API and keeps the session token in an httpOnly cookie, so browser JavaScript never sees it. Sessions last 7 days.

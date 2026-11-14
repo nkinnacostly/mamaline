@@ -95,12 +95,16 @@ npm run db:demo
 
 ## Deploying on Vercel
 
-The API runs on Vercel as a single function (project `mamaline-api`, root directory `api`, London region), with Postgres from Neon added through the Vercel Marketplace. Pushing to `main` deploys it when something in `api/` changed.
+The API runs on Vercel as a single function (project `mamaline-api`, root directory `api`, London region, Node 22) at https://mamaline-api.vercel.app. Postgres is the Neon project `mamaline` (AWS London), linked to the Vercel project through Neon's Vercel integration. Pushing to `main` deploys it when something in `api/` changed.
 
-- **Database:** the Neon integration sets `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct, used by the Prisma CLI). Run migrations from your machine before deploying a schema change: `vercel env pull` into a file outside the repo, load it, then `npx prisma migrate deploy`.
+- **Database:** the Neon integration sets `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct, used by the Prisma CLI). It also creates a Neon branch for preview deployments and development, which start empty. Run migrations from your machine before deploying a schema change: `vercel env pull` into a file outside the repo, load it, then `npx prisma migrate deploy`.
 - **Reminders:** a serverless function can't keep a timer running, so `REMINDERS_ENABLED=false` there and Vercel Cron calls `GET /internal/reminders` once a day at 08:00 Nigerian time (`vercel.json`), signed with `CRON_SECRET`. Without `CRON_SECRET` the route doesn't exist.
 - **After a USSD reply:** SMS, alerts and records run after the reply is sent; on Vercel `waitUntil` keeps the function alive until they finish (`src/core/background.ts`).
 - **SMS:** without `AT_USERNAME` and `AT_API_KEY`, every SMS is recorded as SIMULATED and nothing is sent.
+
+- **Startup:** `src/main.ts` calls `bootstrap()` without awaiting it. Vercel takes over `listen()`, and an awaited top-level promise would keep the function from ever finishing loading.
+- **Only ESM-compatible packages:** Vercel's function loader can't `require()` an ES module, so a CommonJS package that loads `@nestjs/common` (Nest 12 is ESM) crashes the function at startup. That is why sign-in uses a small built-in rate limiter instead of `@nestjs/throttler`.
+- **Live data:** the production database holds sample health workers (with sample PINs) and sample mothers only. Remove them and set real PINs before any real mother uses it.
 
 On a long-running server (Fly.io, Render, a VM) leave `REMINDERS_ENABLED` on and skip the cron.
 

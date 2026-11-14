@@ -2,7 +2,11 @@
 
 A free pregnancy and baby-care line that works on any phone. Mothers in Nigeria register by USSD and get antenatal and vaccine reminders, trusted answers and danger-sign help by SMS, in English, Pidgin, Hausa, Yoruba or Igbo. Every mother is linked to her community health extension worker (CHEW), who gets an alert the moment she reports a danger sign.
 
-Live website: https://mamaline-web.vercel.app
+Live:
+
+- Website: https://mamaline-web.vercel.app
+- Health worker dashboard: https://mamaline-dashboard.vercel.app (sample data; sign in as 0800 000 0101, PIN 2468)
+- API: https://mamaline-api.vercel.app (`/health`; Africa's Talking callbacks go to `/ussd` and `/sms/inbound`)
 
 ## What's in this repository
 
