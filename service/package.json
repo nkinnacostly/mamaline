@@ -4,6 +4,7 @@
   "description": "Pregnancy and child-health companion over USSD and SMS, linked to community health workers.",
   "type": "module",
   "private": true,
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=22.9"
   },

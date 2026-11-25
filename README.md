@@ -66,3 +66,9 @@ MamaLine is a working prototype. It is not yet safe to use with real mothers. Be
 
 - CI runs on every push and pull request (`.github/workflows/ci.yml`): API lint, build, unit tests, migrations and end-to-end tests against Postgres 17; prototype tests; and website type-check, lint and build.
 - Never commit `.env` files, `data/` or real phone numbers. Sample data uses the `+2348000000xxx` range, which the SMS code never sends to.
+
+## License
+
+MamaLine is open source under the [Apache License 2.0](LICENSE). Copyright 2026 CLOOP UNIVERSE TECH LTD.
+
+The license covers the code. Health messages and translations still need clinical review and a professional translator before anyone uses them with real mothers (see [Status](#status)).

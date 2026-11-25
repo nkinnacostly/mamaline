@@ -2,9 +2,9 @@
   "name": "mamaline-api",
   "version": "0.0.1",
   "description": "MamaLine production API: NestJS, Prisma and Neon Postgres",
-  "author": "",
+  "author": "CLOOP UNIVERSE TECH LTD",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "build": "nest build",
