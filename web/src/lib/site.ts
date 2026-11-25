@@ -13,14 +13,18 @@ export const site = {
   contactPhone: "",
 };
 
+// Paths start with "/" so the links also work from other pages, such as /impact.
 export const nav = [
-  { href: "#top", label: "Home" },
-  { href: "#services", label: "What we do" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#health-workers", label: "Health workers" },
-  { href: "#safety", label: "Safety" },
-  { href: "#partner", label: "Partner with us" },
+  { href: "/#top", label: "Home" },
+  { href: "/#services", label: "What we do" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#health-workers", label: "Health workers" },
+  { href: "/#safety", label: "Safety" },
+  { href: "/#partner", label: "Partner with us" },
 ];
+
+// Footer-only links, after the main sections.
+export const footerLinks = [...nav, { href: "/impact", label: "Live data" }];
 
 // "Welcome" in each language MamaLine speaks (shown in the hero when a language is picked).
 export const greetings = [

@@ -23,6 +23,7 @@ The production backend for MamaLine: NestJS 12, Prisma 7 and Postgres on Neon. I
 | `POST /ussd` | Africa's Talking USSD callback (form-encoded). Replies `CON ...` or `END ...` |
 | `POST /sms/inbound` | Africa's Talking inbound SMS callback: YES, NO and STOP replies |
 | `GET /health` | The host and uptime monitors |
+| `GET /public/stats` | Anyone, no sign-in: anonymous totals (mothers enrolled, visits and vaccines confirmed, danger signs and time to contact, SMS) for the website's `/impact` page. No phone numbers, names or places. `dataStatus` comes from `PUBLIC_DATA_STATUS` and stays `sample` until real mothers use MamaLine. Cached for 60 seconds |
 | `POST /auth/sign-in` | The dashboard: `{ phone, pin }` returns a session token (10 tries a minute per IP; 3 wrong PINs pause the number for 15 minutes) |
 | `POST /auth/sign-out`, `GET /auth/me` | The dashboard, with `Authorization: Bearer <token>` |
 | `GET /dashboard/day?date=`, `/week?date=`, `/month?date=` | Visits and vaccines due (and, for today, open alerts and follow-ups). Dates are `YYYY-MM-DD` in Nigerian time |

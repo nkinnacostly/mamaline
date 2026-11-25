@@ -8,6 +8,7 @@ import { CoreModule } from './core/core.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { PublicStatsModule } from './public-stats/public-stats.module.js';
 import { UssdModule } from './ussd/ussd.module.js';
 
 @Module({
@@ -21,6 +22,7 @@ import { UssdModule } from './ussd/ussd.module.js';
     UssdModule,
     AuthModule,
     DashboardModule,
+    PublicStatsModule,
   ],
 })
 export class AppModule {}
