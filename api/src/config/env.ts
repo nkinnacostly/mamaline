@@ -41,6 +41,10 @@ export const envSchema = z.object({
   REMINDERS_ENABLED: flag(true),
   // Lets the host's cron call GET /internal/reminders with "Authorization: Bearer <secret>".
   CRON_SECRET: z.string().min(16).optional(),
+
+  // What GET /public/stats says its figures are. Keep "sample" until the sample records are
+  // removed and real mothers use MamaLine, so the public page never presents test data as impact.
+  PUBLIC_DATA_STATUS: z.enum(['sample', 'live']).default('sample'),
 });
 
 export type Env = z.infer<typeof envSchema>;

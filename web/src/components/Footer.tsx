@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { nav, photos, site } from "@/lib/site";
+import { footerLinks, photos, site } from "@/lib/site";
 import { Heart } from "./icons";
 
 export function Footer() {
@@ -49,7 +49,7 @@ export function Footer() {
 
         <nav aria-label="Footer">
           <ul className="grid grid-cols-2 gap-x-8 gap-y-3 text-[0.9rem]">
-            {nav.map((item) => (
+            {footerLinks.map((item) => (
               <li key={item.href} className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-cream/60" />
                 <a href={item.href} className="text-cream/85 hover:text-cream">

@@ -24,7 +24,9 @@ Open http://localhost:3000.
 | How it works | Three steps |
 | Try it / Safety | A clickable copy of the real USSD menu and the safety promise |
 | Partner with us | Form that emails each enquiry to you (see below) |
-| Footer | Contact, links, photo credit |
+| Footer | Contact, links (including Live data), photo credit |
+
+`/impact` ("Live data") shows the API's anonymous totals from `GET /public/stats`, read on each visit, with a clear "Sample data" notice while the API reports `dataStatus: "sample"`. It reads from `https://mamaline-api.vercel.app` unless `MAMALINE_API_URL` is set (for example `http://localhost:3001` for a local API). If the API can't be reached, the page says so instead of showing figures.
 
 ## Edit content
 
